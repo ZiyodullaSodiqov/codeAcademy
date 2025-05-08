@@ -32,7 +32,7 @@ load_dotenv()
 app = Flask(__name__)
 
 # Configure CORS
-CORS_ORIGINS = os.getenv('CORS_ORIGINS', 'http://localhost:3000').split(',')
+CORS_ORIGINS = os.getenv('CORS_ORIGINS', 'https://codeacademy.nordicuniversity.org').split(',')
 CORS(app, resources={
     r"/api/*": {
         "origins": CORS_ORIGINS,
