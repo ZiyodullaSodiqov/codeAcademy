@@ -41,29 +41,25 @@ LANGUAGE_CONFIG = {
         'extension': '.py',
         'command': 'python3',
         'compile': None,
-        'run': lambda filename: ['python3', filename],
-        'time_limit': 2.0
+        'run': lambda filename: [filename]
     },
     'java': {
         'extension': '.java',
         'command': 'java',
         'compile': lambda filename: ['javac', filename],
-        'run': lambda classname: ['java', '-cp', os.path.dirname(classname), os.path.basename(classname).replace('.java', '')],
-        'time_limit': 4.0
+        'run': lambda classname: ['java', '-cp', os.path.dirname(classname), os.path.basename(classname).replace('.java', '')]
     },
     'cpp': {
         'extension': '.cpp',
         'command': 'g++',
         'compile': lambda filename: ['g++', filename, '-o', filename.replace('.cpp', '')],
-        'run': lambda filename: ['./' + filename.replace('.cpp', '')],
-        'time_limit': 3.0
+        'run': lambda filename: [filename.replace('.cpp', '')]
     },
     'javascript': {
         'extension': '.js',
         'command': 'node',
         'compile': None,
-        'run': lambda filename: ['node', filename],
-        'time_limit': 2.5
+        'run': lambda filename: ['node', filename]
     }
 }
 
@@ -130,26 +126,18 @@ def admin_required(f):
             return jsonify({'error': 'Admin access required'}), 403
         return f(*args, **kwargs)
     return decorated
-def execute_code(code, language, input_data, time_limit=None):
+def execute_code(code, language, input_data, time_limit):
     """Execute code in the specified language with given input"""
     lang_config = LANGUAGE_CONFIG.get(language.lower())
     if not lang_config:
         raise ValueError(f"Unsupported language: {language}")
 
-    # Use language-specific time limit if not provided
-    if time_limit is None:
-        time_limit = lang_config.get('time_limit', 2.0)
-
     temp_dir = tempfile.mkdtemp()
     try:
-        # Create source file with executable permissions
+        # Create source file
         filename = os.path.join(temp_dir, f"source{lang_config['extension']}")
         with open(filename, 'w') as f:
             f.write(code)
-        
-        # Make the file executable if needed
-        if language.lower() in ['python', 'bash', 'sh']:
-            os.chmod(filename, 0o755)  # Make file executable
 
         # Compile if needed
         if lang_config['compile']:
@@ -158,8 +146,7 @@ def execute_code(code, language, input_data, time_limit=None):
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
-                timeout=time_limit,
-                cwd=temp_dir
+                timeout=time_limit
             )
             if compile_proc.returncode != 0:
                 return {
@@ -908,4 +895,4 @@ def server_error(error):
     return jsonify({'error': 'Internal server error'}), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5055, debug=True)
+    app.run(host='127.0.0.1', port=5055, debug=True)
