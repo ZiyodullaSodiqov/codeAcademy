@@ -1,0 +1,40 @@
+2025-05-08 23:50:58,641 INFO: MongoDB connected successfully
+2025-05-08 23:50:58,642 INFO: Collections initialized successfully
+2025-05-08 23:50:58,690 INFO: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5055
+ * Running on http://192.168.100.197:5055
+2025-05-08 23:50:58,690 INFO: [33mPress CTRL+C to quit[0m
+2025-05-08 23:51:19,946 INFO: 127.0.0.1 - - [08/May/2025 23:51:19] "GET /api/problems/qoshish HTTP/1.1" 200 -
+2025-05-08 23:51:20,325 INFO: 127.0.0.1 - - [08/May/2025 23:51:20] "GET /api/problems/qoshish HTTP/1.1" 200 -
+2025-05-08 23:51:22,853 INFO: 127.0.0.1 - - [08/May/2025 23:51:22] "GET /api/problems HTTP/1.1" 200 -
+2025-05-08 23:51:24,092 INFO: 127.0.0.1 - - [08/May/2025 23:51:24] "GET /api/problems HTTP/1.1" 200 -
+2025-05-08 23:51:27,410 INFO: 127.0.0.1 - - [08/May/2025 23:51:27] "GET /api/problems/qoshish HTTP/1.1" 200 -
+2025-05-08 23:51:27,751 INFO: 127.0.0.1 - - [08/May/2025 23:51:27] "GET /api/problems/qoshish HTTP/1.1" 200 -
+2025-05-08 23:53:50,449 INFO: Submission 681cfdbefb2f4531fbea34c2: Created for problem qoshish
+2025-05-08 23:53:50,456 INFO: Execution d617bc7c-67f8-4057-88c6-471a969c952a: Starting for language javascript
+2025-05-08 23:53:50,653 WARNING: Execution d617bc7c-67f8-4057-88c6-471a969c952a: Runtime error
+2025-05-08 23:53:50,657 INFO: Execution 01a57884-5914-4021-ad4e-bfde7fecba30: Starting for language javascript
+2025-05-08 23:53:50,832 WARNING: Execution 01a57884-5914-4021-ad4e-bfde7fecba30: Runtime error
+2025-05-08 23:53:50,837 INFO: Execution 95e17e36-5e89-4c65-b9f4-172c03076980: Starting for language javascript
+2025-05-08 23:53:50,991 WARNING: Execution 95e17e36-5e89-4c65-b9f4-172c03076980: Runtime error
+2025-05-08 23:53:51,337 INFO: 127.0.0.1 - - [08/May/2025 23:53:51] "POST /api/problems/qoshish/submit HTTP/1.1" 200 -
+2025-05-08 23:54:12,023 INFO: Submission 681cfdd3fb2f4531fbea34c3: Created for problem qoshish
+2025-05-08 23:54:12,025 INFO: Execution a1d6eb6f-4a4a-4788-8886-75668b1ed93a: Starting for language javascript
+2025-05-08 23:54:12,200 WARNING: Execution a1d6eb6f-4a4a-4788-8886-75668b1ed93a: Runtime error
+2025-05-08 23:54:12,205 INFO: Execution 6192a105-f5e4-495e-9054-beeefc4a1de7: Starting for language javascript
+2025-05-08 23:54:12,381 WARNING: Execution 6192a105-f5e4-495e-9054-beeefc4a1de7: Runtime error
+2025-05-08 23:54:12,386 INFO: Execution 40a4b909-d7b0-4314-9dca-2e853d9ce974: Starting for language javascript
+2025-05-08 23:54:12,569 WARNING: Execution 40a4b909-d7b0-4314-9dca-2e853d9ce974: Runtime error
+2025-05-08 23:54:12,913 INFO: 127.0.0.1 - - [08/May/2025 23:54:12] "POST /api/problems/qoshish/submit HTTP/1.1" 200 -
+2025-05-08 23:54:50,100 INFO: Submission 681cfdf9fb2f4531fbea34c4: Created for problem qoshish
+2025-05-08 23:54:50,103 INFO: Execution ac1d5c64-6520-46bb-9eb3-8ddd6465996b: Starting for language javascript
+2025-05-08 23:54:50,362 INFO: Execution ac1d5c64-6520-46bb-9eb3-8ddd6465996b: Completed successfully
+2025-05-08 23:54:50,364 INFO: Execution b48f3fa3-c875-4dee-ae28-fb60f1c10400: Starting for language javascript
+2025-05-08 23:54:50,509 INFO: Execution b48f3fa3-c875-4dee-ae28-fb60f1c10400: Completed successfully
+2025-05-08 23:54:50,511 INFO: Execution c03190bb-a390-48fb-a37a-e692ff713a79: Starting for language javascript
+2025-05-08 23:54:50,671 INFO: Execution c03190bb-a390-48fb-a37a-e692ff713a79: Completed successfully
+2025-05-08 23:54:51,826 INFO: Submission 681cfdf9fb2f4531fbea34c4: Accepted, user stats updated
+2025-05-08 23:54:51,830 INFO: 127.0.0.1 - - [08/May/2025 23:54:51] "POST /api/problems/qoshish/submit HTTP/1.1" 200 -
+2025-05-09 00:02:30,741 INFO: 127.0.0.1 - - [09/May/2025 00:02:30] "GET /api/me HTTP/1.1" 200 -
+2025-05-09 00:02:31,082 INFO: 127.0.0.1 - - [09/May/2025 00:02:31] "GET /api/me HTTP/1.1" 200 -
