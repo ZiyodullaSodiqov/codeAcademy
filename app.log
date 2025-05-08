@@ -38,3 +38,59 @@
 2025-05-08 23:54:51,830 INFO: 127.0.0.1 - - [08/May/2025 23:54:51] "POST /api/problems/qoshish/submit HTTP/1.1" 200 -
 2025-05-09 00:02:30,741 INFO: 127.0.0.1 - - [09/May/2025 00:02:30] "GET /api/me HTTP/1.1" 200 -
 2025-05-09 00:02:31,082 INFO: 127.0.0.1 - - [09/May/2025 00:02:31] "GET /api/me HTTP/1.1" 200 -
+2025-05-09 00:11:43,864 INFO: MongoDB connected successfully
+2025-05-09 00:11:43,868 INFO: Collections initialized successfully
+2025-05-09 00:11:43,928 INFO: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5055
+ * Running on http://192.168.100.197:5055
+2025-05-09 00:11:43,931 INFO: [33mPress CTRL+C to quit[0m
+2025-05-09 00:12:58,736 INFO: 127.0.0.1 - - [09/May/2025 00:12:58] "[33mGET / HTTP/1.1[0m" 404 -
+2025-05-09 00:12:58,856 INFO: 127.0.0.1 - - [09/May/2025 00:12:58] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+2025-05-09 00:13:09,092 INFO: 127.0.0.1 - - [09/May/2025 00:13:09] "GET /api/problems HTTP/1.1" 200 -
+2025-05-09 00:15:17,327 INFO: 127.0.0.1 - - [09/May/2025 00:15:17] "GET /api/me HTTP/1.1" 200 -
+2025-05-09 00:15:17,664 INFO: 127.0.0.1 - - [09/May/2025 00:15:17] "GET /api/me HTTP/1.1" 200 -
+2025-05-09 00:26:26,627 INFO: 127.0.0.1 - - [09/May/2025 00:26:26] "GET /api/problems HTTP/1.1" 200 -
+2025-05-09 00:26:28,999 INFO: 127.0.0.1 - - [09/May/2025 00:26:28] "GET /api/problems HTTP/1.1" 200 -
+2025-05-09 00:26:30,439 INFO: 127.0.0.1 - - [09/May/2025 00:26:30] "GET /api/olympiads HTTP/1.1" 200 -
+2025-05-09 00:26:30,780 INFO: 127.0.0.1 - - [09/May/2025 00:26:30] "GET /api/olympiads HTTP/1.1" 200 -
+2025-05-09 00:26:31,248 INFO: 127.0.0.1 - - [09/May/2025 00:26:31] "OPTIONS /api/me HTTP/1.1" 200 -
+2025-05-09 00:26:31,251 INFO: 127.0.0.1 - - [09/May/2025 00:26:31] "OPTIONS /api/me HTTP/1.1" 200 -
+2025-05-09 00:26:31,596 INFO: 127.0.0.1 - - [09/May/2025 00:26:31] "GET /api/me HTTP/1.1" 200 -
+2025-05-09 00:26:31,934 INFO: 127.0.0.1 - - [09/May/2025 00:26:31] "GET /api/me HTTP/1.1" 200 -
+2025-05-09 00:26:33,275 INFO: 127.0.0.1 - - [09/May/2025 00:26:33] "GET /api/olympiads HTTP/1.1" 200 -
+2025-05-09 00:26:33,625 INFO: 127.0.0.1 - - [09/May/2025 00:26:33] "GET /api/olympiads HTTP/1.1" 200 -
+2025-05-09 00:26:35,007 INFO: 127.0.0.1 - - [09/May/2025 00:26:35] "GET /api/problems HTTP/1.1" 200 -
+2025-05-09 00:26:35,685 INFO: 127.0.0.1 - - [09/May/2025 00:26:35] "GET /api/problems HTTP/1.1" 200 -
+2025-05-09 00:26:39,099 INFO: 127.0.0.1 - - [09/May/2025 00:26:39] "GET /api/problems HTTP/1.1" 200 -
+2025-05-09 00:28:50,556 INFO: 127.0.0.1 - - [09/May/2025 00:28:50] "GET /api/olympiads HTTP/1.1" 200 -
+2025-05-09 00:28:50,891 INFO: 127.0.0.1 - - [09/May/2025 00:28:50] "GET /api/olympiads HTTP/1.1" 200 -
+2025-05-09 00:28:51,579 INFO: 127.0.0.1 - - [09/May/2025 00:28:51] "GET /api/me HTTP/1.1" 200 -
+2025-05-09 00:28:52,010 INFO: 127.0.0.1 - - [09/May/2025 00:28:52] "GET /api/me HTTP/1.1" 200 -
+2025-05-09 00:35:56,177 INFO: 127.0.0.1 - - [09/May/2025 00:35:56] "GET /api/olympiads HTTP/1.1" 200 -
+2025-05-09 00:35:56,524 INFO: 127.0.0.1 - - [09/May/2025 00:35:56] "GET /api/olympiads HTTP/1.1" 200 -
+2025-05-09 00:35:57,839 INFO: 127.0.0.1 - - [09/May/2025 00:35:57] "GET /api/problems HTTP/1.1" 200 -
+2025-05-09 00:35:58,204 INFO: 127.0.0.1 - - [09/May/2025 00:35:58] "GET /api/problems HTTP/1.1" 200 -
+2025-05-09 00:35:59,060 INFO: 127.0.0.1 - - [09/May/2025 00:35:59] "GET /api/olympiads HTTP/1.1" 200 -
+2025-05-09 00:35:59,398 INFO: 127.0.0.1 - - [09/May/2025 00:35:59] "GET /api/olympiads HTTP/1.1" 200 -
+2025-05-09 00:36:08,531 INFO: 127.0.0.1 - - [09/May/2025 00:36:08] "GET /api/me HTTP/1.1" 200 -
+2025-05-09 00:36:08,875 INFO: 127.0.0.1 - - [09/May/2025 00:36:08] "GET /api/me HTTP/1.1" 200 -
+2025-05-09 00:36:44,666 INFO: MongoDB connected successfully
+2025-05-09 00:36:44,669 INFO: Collections initialized successfully
+2025-05-09 00:36:44,761 INFO: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5055
+ * Running on http://192.168.100.197:5055
+2025-05-09 00:36:44,763 INFO: [33mPress CTRL+C to quit[0m
+2025-05-09 00:37:11,168 INFO: 127.0.0.1 - - [09/May/2025 00:37:11] "GET /api/me HTTP/1.1" 200 -
+2025-05-09 00:37:11,505 INFO: 127.0.0.1 - - [09/May/2025 00:37:11] "GET /api/me HTTP/1.1" 200 -
+2025-05-09 00:37:12,776 INFO: 127.0.0.1 - - [09/May/2025 00:37:12] "GET /api/me HTTP/1.1" 200 -
+2025-05-09 00:37:13,117 INFO: 127.0.0.1 - - [09/May/2025 00:37:13] "GET /api/me HTTP/1.1" 200 -
+2025-05-09 00:37:14,066 INFO: 127.0.0.1 - - [09/May/2025 00:37:14] "GET /api/problems HTTP/1.1" 200 -
+2025-05-09 00:37:14,438 INFO: 127.0.0.1 - - [09/May/2025 00:37:14] "GET /api/problems HTTP/1.1" 200 -
+2025-05-09 00:37:16,158 INFO: 127.0.0.1 - - [09/May/2025 00:37:16] "GET /api/problems HTTP/1.1" 200 -
+2025-05-09 00:37:16,533 INFO: 127.0.0.1 - - [09/May/2025 00:37:16] "GET /api/problems HTTP/1.1" 200 -
+2025-05-09 00:37:24,211 INFO: 127.0.0.1 - - [09/May/2025 00:37:24] "GET /api/problems HTTP/1.1" 200 -
+2025-05-09 00:37:24,582 INFO: 127.0.0.1 - - [09/May/2025 00:37:24] "GET /api/problems HTTP/1.1" 200 -
+2025-05-09 00:37:25,353 INFO: 127.0.0.1 - - [09/May/2025 00:37:25] "GET /api/me HTTP/1.1" 200 -
+2025-05-09 00:37:25,690 INFO: 127.0.0.1 - - [09/May/2025 00:37:25] "GET /api/me HTTP/1.1" 200 -
