@@ -268,7 +268,7 @@ def submit_problem_solution(current_user, problem_id):
 
         submission = {
             'problem_id': problem_id,
-            'user_id': ObjectId(current_user['_id']),
+            'user_id': str(ObjectId(current_user['_id'])),  # Convert ObjectId to string
             'code': data['code'],
             'language': data['language'].lower(),
             'submitted_at': datetime.utcnow(),
@@ -276,7 +276,7 @@ def submit_problem_solution(current_user, problem_id):
             'results': []
         }
 
-        submission_id = submissions_col.insert_one(submission).inserted_id
+        submission_id = str(submissions_col.insert_one(submission).inserted_id)  # Convert ObjectId to string
         logger.info(f"Submission {submission_id}: Created for problem {problem_id}")
 
         test_results = []
@@ -322,7 +322,7 @@ def submit_problem_solution(current_user, problem_id):
 
         final_status = 'Accepted' if is_correct else 'Rejected'
         submissions_col.update_one(
-            {'_id': submission_id},
+            {'_id': ObjectId(submission_id)},  # Use ObjectId for MongoDB update
             {'$set': {
                 'status': final_status,
                 'results': test_results,
@@ -345,7 +345,7 @@ def submit_problem_solution(current_user, problem_id):
             logger.info(f"Submission {submission_id}: Accepted, user stats updated")
 
         return jsonify({
-            'submission_id': str(submission_id),
+            'submission_id': submission_id,
             'problem_id': problem_id,
             'status': final_status,
             'results': test_results,
@@ -407,13 +407,13 @@ def create_problem(current_user):
             'memory_limit': data.get('memory_limit', 256),
             'test_cases': data['test_cases'],
             'created_at': datetime.utcnow(),
-            'created_by': str(current_user['_id']),
+            'created_by': str(ObjectId(current_user['_id'])),  # Convert ObjectId to string
             'solved_count': 0
         }
 
         problems_col.insert_one(problem)
         logger.info(f"Problem {data['id']} created by {current_user['username']}")
-        return jsonify({'message': 'Problem created successfully'}), 201
+        return jsonify({'message': 'Problem created successfully'})
 
     except Exception as e:
         logger.error(f"Problem creation error: {str(e)}")
@@ -443,8 +443,8 @@ def get_olympiad(olympiad_id):
             logger.warning(f"Olympiad {olympiad_id} not found")
             return jsonify({'error': 'Olympiad not found'}), 404
 
-        olympiad['_id'] = str(olympiad['_id'])
-        olympiad['created_by'] = str(olympiad['created_by'])
+        olympiad['_id'] = str(olympiad['_id'])  # Convert ObjectId to string
+        olympiad['created_by'] = str(olympiad['created_by'])  # Convert ObjectId to string
         olympiad['start_time'] = olympiad['start_time'].isoformat()
         olympiad['end_time'] = olympiad['end_time'].isoformat()
         olympiad['created_at'] = olympiad['created_at'].isoformat()
@@ -498,8 +498,8 @@ def get_all_olympiads():
     try:
         olympiads = list(olympiads_col.find({}))
         for olympiad in olympiads:
-            olympiad['_id'] = str(olympiad['_id'])
-            olympiad['created_by'] = str(olympiad['created_by'])
+            olympiad['_id'] = str(olympiad['_id'])  # Convert ObjectId to string
+            olympiad['created_by'] = str(olympiad['created_by'])  # Convert ObjectId to string
             olympiad['start_time'] = olympiad['start_time'].isoformat()
             olympiad['end_time'] = olympiad['end_time'].isoformat()
             olympiad['created_at'] = olympiad['created_at'].isoformat()
@@ -540,15 +540,15 @@ def create_olympiad(current_user):
             'end_time': end_time,
             'problems': data['problems'],
             'created_at': datetime.utcnow(),
-            'created_by': str(current_user['_id']),
+            'created_by': str(ObjectId(current_user['_id'])),  # Convert ObjectId to string
             'status': 'upcoming'
         }
 
-        olympiad_id = olympiads_col.insert_one(olympiad).inserted_id
+        olympiad_id = str(olympiads_col.insert_one(olympiad).inserted_id)  # Convert ObjectId to string
         logger.info(f"Olympiad {olympiad_id} created by {current_user['username']}")
         return jsonify({
             'message': 'Olympiad created successfully',
-            'olympiad_id': str(olympiad_id)
+            'olympiad_id': olympiad_id
         }), 201
 
     except Exception as e:
@@ -634,8 +634,8 @@ def register_for_olympiad(current_user, olympiad_id):
             return jsonify({'error': 'Already registered for this olympiad'}), 400
 
         registration = {
-            'olympiad_id': ObjectId(olympiad_id),
-            'user_id': ObjectId(current_user['_id']),
+            'olympiad_id': str(ObjectId(olympiad_id)),  # Convert ObjectId to string
+            'user_id': str(ObjectId(current_user['_id'])),  # Convert ObjectId to string
             'registered_at': datetime.utcnow(),
             'problems_solved': [],
             'total_points': 0
@@ -643,7 +643,7 @@ def register_for_olympiad(current_user, olympiad_id):
 
         olympiad_participants_col.insert_one(registration)
         logger.info(f"User {current_user['username']} registered for olympiad {olympiad_id}")
-        return jsonify({'message': 'Registered for olympiad successfully'}), 201
+        return jsonify({'message': 'Registered for olympiad successfully'})
 
     except Exception as e:
         logger.error(f"Registration error: {str(e)}")
@@ -702,8 +702,8 @@ def submit_olympiad_solution(current_user, olympiad_id):
 
         submission = {
             'problem_id': data['problem_id'],
-            'olympiad_id': ObjectId(olympiad_id),
-            'user_id': ObjectId(current_user['_id']),
+            'olympiad_id': str(ObjectId(olympiad_id)),  # Convert ObjectId to string
+            'user_id': str(ObjectId(current_user['_id'])),  # Convert ObjectId to string
             'code': data['code'],
             'language': data['language'].lower(),
             'submitted_at': now,
@@ -711,7 +711,7 @@ def submit_olympiad_solution(current_user, olympiad_id):
             'results': []
         }
 
-        submission_id = submissions_col.insert_one(submission).inserted_id
+        submission_id = str(submissions_col.insert_one(submission).inserted_id)  # Convert ObjectId to string
         logger.info(f"Olympiad submission {submission_id}: Created for problem {data['problem_id']}")
 
         test_results = []
@@ -758,7 +758,7 @@ def submit_olympiad_solution(current_user, olympiad_id):
 
         final_status = 'Accepted' if is_correct else 'Rejected'
         submissions_col.update_one(
-            {'_id': submission_id},
+            {'_id': ObjectId(submission_id)},  # Use ObjectId for MongoDB update
             {'$set': {
                 'status': final_status,
                 'results': test_results,
@@ -792,7 +792,7 @@ def submit_olympiad_solution(current_user, olympiad_id):
             }
 
             olympiad_participants_col.update_one(
-                {'_id': participation['_id']},
+                {'_id': ObjectId(participation['_id'])},  # Use ObjectId for MongoDB update
                 update_data
             )
 
@@ -803,7 +803,7 @@ def submit_olympiad_solution(current_user, olympiad_id):
             logger.info(f"Olympiad submission {submission_id}: Accepted, points awarded: {total_points}")
 
         return jsonify({
-            'submission_id': str(submission_id),
+            'submission_id': submission_id,
             'status': final_status,
             'results': test_results,
             'points_earned': total_points if is_correct else 0,
@@ -826,6 +826,7 @@ def get_olympiad_leaderboard(olympiad_id):
         ).sort('total_points', -1))
 
         for p in participants:
+            p['user_id'] = str(p['user_id'])  # Convert ObjectId to string
             user = users_col.find_one(
                 {'_id': ObjectId(p['user_id'])},
                 {'username': 1, '_id': 0}
@@ -846,7 +847,7 @@ def get_all_users(current_user):
     try:
         users = list(users_col.find({}, {'password': 0}))
         for user in users:
-            user['_id'] = str(user['_id'])
+            user['_id'] = str(user['_id'])  # Convert ObjectId to string
         return jsonify(users)
     except Exception as e:
         logger.error(f"Get all users error: {str(e)}")
@@ -896,9 +897,9 @@ def register():
             'total_points': 0
         }
 
-        user_id = users_col.insert_one(user).inserted_id
+        user_id = str(users_col.insert_one(user).inserted_id)  # Convert ObjectId to string
         token = jwt.encode({
-            'user_id': str(user_id),
+            'user_id': user_id,
             'exp': datetime.utcnow() + timedelta(days=30)
         }, app.config['SECRET_KEY'], algorithm='HS256')
 
@@ -906,7 +907,7 @@ def register():
         return jsonify({
             'message': 'User registered successfully',
             'token': token,
-            'user_id': str(user_id),
+            'user_id': user_id,
             'username': user['username']
         }), 201
 
@@ -954,7 +955,7 @@ def login():
 def get_current_user(current_user):
     try:
         user_data = {
-            'user_id': str(current_user['_id']),
+            'user_id': str(current_user['_id']),  # Convert ObjectId to string
             'username': current_user['username'],
             'email': current_user.get('email', ''),
             'role': current_user.get('role', 'user'),
