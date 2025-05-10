@@ -12,16 +12,22 @@ from flask_bcrypt import Bcrypt
 import jwt
 from functools import wraps
 import shutil
+import logging
+import re
 
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 # Load configurations
 load_dotenv('.env')
 
 app = Flask(__name__)
 
+# Configure CORS https://codeacademy.nordicuniversity.org
 CORS(app, resources={
     r"/api/*": {
-        "origins": ["http://localhost:3000"],
+        "origins": "*",  # Allow all origins
         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         "allow_headers": ["Content-Type", "Authorization"],
         "supports_credentials": True,
@@ -29,9 +35,8 @@ CORS(app, resources={
     }
 })
 
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key-here')
-app.config["MONGO_URI"] = os.getenv("MONGO_URI" , "mongodb+srv://ziyodullasodiqov01:HZL53G_Cgni3NT3@cluster0.vfh7g.mongodb.net/onlinejudge?retryWrites=true&w=majority&")
-print(os.getenv("MONGO_URI"))
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', os.urandom(32).hex())
+app.config["MONGO_URI"] = os.getenv("MONGO_URI", "mongodb+srv://ziyodullasodiqov01:HZL53G_Cgni3NT3@cluster0.vfh7g.mongodb.net/onlinejudge?retryWrites=true&w=majority")
 mongo = PyMongo(app)
 bcrypt = Bcrypt(app)
 
@@ -41,81 +46,72 @@ LANGUAGE_CONFIG = {
         'extension': '.py',
         'command': 'python3',
         'compile': None,
-        'run': lambda filename: [filename]
+        'run': lambda filename: [filename],
+        'sanitize': lambda code: re.sub(r'import\s+(os|subprocess|sys|shutil|socket|threading)', '#', code)
     },
     'java': {
         'extension': '.java',
         'command': 'java',
         'compile': lambda filename: ['javac', filename],
-        'run': lambda classname: ['java', '-cp', os.path.dirname(classname), os.path.basename(classname).replace('.java', '')]
+        'run': lambda classname: ['java', '-cp', os.path.dirname(classname), os.path.basename(classname).replace('.java', '')],
+        'sanitize': lambda code: code
     },
     'cpp': {
         'extension': '.cpp',
         'command': 'g++',
         'compile': lambda filename: ['g++', filename, '-o', filename.replace('.cpp', '')],
-        'run': lambda filename: [filename.replace('.cpp', '')]
+        'run': lambda filename: [filename.replace('.cpp', '')],
+        'sanitize': lambda code: code
     },
     'javascript': {
         'extension': '.js',
         'command': 'node',
         'compile': None,
-        'run': lambda filename: ['node', filename]
+        'run': lambda filename: ['node', filename],
+        'sanitize': lambda code: code
     }
 }
 
+# Initialize collections
 try:
-    problems_col = mongo.db.problems
-    submissions_col = mongo.db.submissions
-    users_col = mongo.db.users
-    olympiads_col = mongo.db.olympiads
-    olympiad_participants_col = mongo.db.olympiad_participantsmongo = PyMongo(app)
     mongo.cx.server_info()  # Test connection
-    print("✅ MongoDB connected successfully!")
-    
-    # Initialize collections
     problems_col = mongo.db.problems
     submissions_col = mongo.db.submissions
     users_col = mongo.db.users
     olympiads_col = mongo.db.olympiads
     olympiad_participants_col = mongo.db.olympiad_participants
-    print("✅ Collections initialized successfully")
-except AttributeError as e:
-    print(f"❌ FATAL: MongoDB connection failed: {str(e)}")
-    # Handle this appropriately - maybe exit if DB is critical
+    logger.info("✅ MongoDB connected and collections initialized successfully")
+except Exception as e:
+    logger.error(f"❌ FATAL: MongoDB connection failed: {str(e)}")
     import sys
     sys.exit(1)
-
-bcrypt = Bcrypt(app)
-# Collections
-problems_col = mongo.db.problems
-submissions_col = mongo.db.submissions
-users_col = mongo.db.users
-olympiads_col = mongo.db.olympiads
-olympiad_participants_col = mongo.db.olympiad_participants
 
 # ====================== AUTH MIDDLEWARE ======================
 def token_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         token = None
-        
         if 'Authorization' in request.headers:
-            token = request.headers['Authorization'].split(" ")[1]
-            
+            try:
+                token = request.headers['Authorization'].split(" ")[1]
+            except IndexError:
+                return jsonify({'error': 'Invalid Authorization header format'}), 401
+
         if not token:
             return jsonify({'error': 'Token is missing'}), 401
-            
+
         try:
             data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'])
             current_user = users_col.find_one({'_id': ObjectId(data['user_id'])})
             if not current_user:
                 return jsonify({'error': 'User not found'}), 404
             kwargs['current_user'] = current_user
-        except Exception as e:
+        except jwt.ExpiredSignatureError:
+            return jsonify({'error': 'Token has expired'}), 401
+        except jwt.InvalidTokenError:
             return jsonify({'error': 'Token is invalid'}), 401
-            
+
         return f(*args, **kwargs)
-        
     return decorated
 
 def admin_required(f):
@@ -126,18 +122,23 @@ def admin_required(f):
             return jsonify({'error': 'Admin access required'}), 403
         return f(*args, **kwargs)
     return decorated
+
+# ====================== CODE EXECUTION ======================
 def execute_code(code, language, input_data, time_limit):
     """Execute code in the specified language with given input"""
     lang_config = LANGUAGE_CONFIG.get(language.lower())
     if not lang_config:
         raise ValueError(f"Unsupported language: {language}")
 
+    # Sanitize code
+    sanitized_code = lang_config['sanitize'](code)
+    
     temp_dir = tempfile.mkdtemp()
     try:
         # Create source file
         filename = os.path.join(temp_dir, f"source{lang_config['extension']}")
         with open(filename, 'w') as f:
-            f.write(code)
+            f.write(sanitized_code)
 
         # Compile if needed
         if lang_config['compile']:
@@ -166,7 +167,7 @@ def execute_code(code, language, input_data, time_limit):
             text=True,
             cwd=temp_dir
         )
-        
+
         try:
             stdout, stderr = process.communicate(
                 input=input_data,
@@ -191,7 +192,7 @@ def execute_code(code, language, input_data, time_limit):
         except subprocess.TimeoutExpired:
             process.kill()
             return {
-                'status': 'Time Limit Exceeded',
+                'status': 'Time Timeout Exceeded',
                 'runtime': time_limit
             }
 
@@ -203,135 +204,169 @@ def execute_code(code, language, input_data, time_limit):
         }
     finally:
         shutil.rmtree(temp_dir, ignore_errors=True)
-        
+
+# ====================== SUBMISSION PROCESSING ======================
+def process_submission(code, language, problem, user_id, is_olympiad=False, olympiad_id=None, participation=None):
+    """Process code submission for a problem or olympiad"""
+    submission = {
+        'problem_id': problem['id'],
+        'user_id': ObjectId(user_id),
+        'code': code,
+        'language': language.lower(),
+        'submitted_at': datetime.now(timezone.utc),
+        'status': 'Pending',
+        'results': []
+    }
+    if is_olympiad:
+        submission['olympiad_id'] = ObjectId(olympiad_id)
+
+    submission_id = submissions_col.insert_one(submission).inserted_id
+    test_results = []
+    is_correct = True
+    max_runtime = 0
+    execution_start = datetime.now(timezone.utc)
+
+    for test_case in problem.get('test_cases', []):
+        try:
+            result = execute_code(
+                code=code,
+                language=language,
+                input_data=test_case['input'],
+                time_limit=problem.get('time_limit', 2)
+            )
+
+            test_result = {
+                'input': test_case['input'],
+                'expected': test_case['output'],
+                'actual': result.get('output', ''),
+                'runtime': result.get('runtime', 0),
+                'status': result['status']
+            }
+
+            if 'error' in result:
+                test_result['error'] = result['error']
+
+            if result['status'] != 'Accepted' or result.get('output', '') != test_case['output']:
+                is_correct = False
+
+            max_runtime = max(max_runtime, result.get('runtime', 0))
+            test_results.append(test_result)
+
+        except Exception as e:
+            test_results.append({
+                'input': test_case['input'],
+                'expected': test_case['output'],
+                'status': 'Evaluation Error',
+                'error': str(e),
+                'runtime': 0
+            })
+            is_correct = False
+
+    final_status = 'Accepted' if is_correct else 'Rejected'
+    submissions_col.update_one(
+        {'_id': submission_id},
+        {'$set': {
+            'status': final_status,
+            'results': test_results,
+            'runtime': max_runtime
+        }}
+    )
+
+    points_earned = 0
+    time_taken = (datetime.now(timezone.utc) - execution_start).total_seconds()
+
+    if is_correct:
+        base_points = {
+            'easy': 100,
+            'medium': 200,
+            'hard': 300
+        }.get(problem['difficulty'].lower(), 100)
+        points_earned = 10 if not is_olympiad else max(10, base_points - int(time_taken))
+
+        if is_olympiad:
+            olympiad_participants_col.update_one(
+                {'_id': participation['_id']},
+                {
+                    '$push': {
+                        'problems_solved': {
+                            'problem_id': problem['id'],
+                            'solved_at': datetime.now(timezone.utc),
+                            'time_taken': time_taken,
+                            'points_earned': points_earned
+                        }
+                    },
+                    '$inc': {'total_points': points_earned}
+                }
+            )
+        else:
+            users_col.update_one(
+                {'_id': ObjectId(user_id)},
+                {
+                    '$addToSet': {'solved_problems': problem['id']},
+                    '$inc': {'total_points': points_earned}
+                }
+            )
+
+        problems_col.update_one(
+            {'id': problem['id']},
+            {'$inc': {'solved_count': 1}}
+        )
+
+    return {
+        'submission_id': str(submission_id),
+        'problem_id': problem['id'],
+        'status': final_status,
+        'results': test_results,
+        'points_earned': points_earned,
+        'time_taken': time_taken,
+        'runtime': max_runtime,
+        'is_correct': is_correct
+    }
+
 # ====================== PROBLEM ENDPOINTS ======================
 @app.route('/api/problems/<problem_id>/submit', methods=['POST'])
 @token_required
 def submit_problem_solution(current_user, problem_id):
     try:
         data = request.get_json()
-        
         required_fields = ['code', 'language']
         if not all(field in data for field in required_fields):
             return jsonify({'error': 'Missing required fields'}), 400
 
-        # Find the problem
         problem = problems_col.find_one({'id': problem_id})
         if not problem:
             return jsonify({'error': 'Problem not found'}), 404
 
-        # Create new submission
-        submission = {
-            'problem_id': problem_id,
-            'user_id': ObjectId(current_user['_id']),
-            'code': data['code'],
-            'language': data['language'].lower(),
-            'submitted_at': datetime.utcnow(),
-            'status': 'Pending',
-            'results': []
-        }
-
-        # Save submission to database
-        submission_id = submissions_col.insert_one(submission).inserted_id
-
-        test_results = []
-        is_correct = True
-        runtime = 0
-
-        # Execute against each test case
-        for test_case in problem.get('test_cases', []):
-            try:
-                result = execute_code(
-                    code=data['code'],
-                    language=data['language'],
-                    input_data=test_case['input'],
-                    time_limit=problem.get('time_limit', 2)
-                )
-
-                test_result = {
-                    'input': test_case['input'],
-                    'expected': test_case['output'],
-                    'actual': result.get('output', ''),
-                    'runtime': result.get('runtime', 0),
-                    'status': result['status']
-                }
-
-                if 'error' in result:
-                    test_result['error'] = result['error']
-
-                if result['status'] != 'Accepted' or result.get('output', '') != test_case['output']:
-                    is_correct = False
-
-                runtime = max(runtime, result.get('runtime', 0))
-                test_results.append(test_result)
-
-            except Exception as e:
-                test_results.append({
-                    'input': test_case['input'],
-                    'expected': test_case['output'],
-                    'status': 'Evaluation Error',
-                    'error': str(e),
-                    'runtime': 0
-                })
-                is_correct = False
-
-        # Update submission status
-        final_status = 'Accepted' if is_correct else 'Rejected'
-        submissions_col.update_one(
-            {'_id': submission_id},
-            {'$set': {
-                'status': final_status,
-                'results': test_results,
-                'runtime': runtime
-            }}
+        result = process_submission(
+            code=data['code'],
+            language=data['language'],
+            problem=problem,
+            user_id=str(current_user['_id'])
         )
-
-        # Update user stats if correct
-        if is_correct:
-            users_col.update_one(
-                {'_id': ObjectId(current_user['_id'])},
-                {
-                    '$addToSet': {'solved_problems': problem_id},
-                    '$inc': {'total_points': 10}
-                }
-            )
-            problems_col.update_one(
-                {'id': problem_id},
-                {'$inc': {'solved_count': 1}}
-            )
-
-        return jsonify({
-            'submission_id': str(submission_id),
-            'problem_id': problem_id,
-            'status': final_status,
-            'results': test_results,
-            'runtime': runtime,
-            'is_correct': is_correct
-        })
+        return jsonify(result)
 
     except Exception as e:
+        logger.error(f"Error in submit_problem_solution: {str(e)}")
         return jsonify({'error': str(e)}), 500
-    
-    
+
 @app.route('/api/problems/<problem_id>', methods=['GET'])
 def get_problem(problem_id):
     try:
-        # ID bo'yicha masalani topish
         problem = problems_col.find_one({'id': problem_id}, {'_id': 0})
-        
         if not problem:
             return jsonify({'error': 'Problem not found'}), 404
-            
         return jsonify(problem)
     except Exception as e:
+        logger.error(f"Error in get_problem: {str(e)}")
         return jsonify({'error': str(e)}), 500
-    
+
 @app.route('/api/problems', methods=['GET'])
 def get_all_problems():
     try:
         problems = list(problems_col.find({}, {'_id': 0}))
         return jsonify(problems)
     except Exception as e:
+        logger.error(f"Error in get_all_problems: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/admin/problems', methods=['POST'])
@@ -340,7 +375,6 @@ def get_all_problems():
 def create_problem(current_user):
     try:
         data = request.get_json()
-        
         required_fields = ['id', 'title', 'description', 'difficulty', 'test_cases']
         if not all(field in data for field in required_fields):
             return jsonify({'error': 'Missing required fields'}), 400
@@ -366,6 +400,7 @@ def create_problem(current_user):
         return jsonify({'message': 'Problem created successfully'}), 201
 
     except Exception as e:
+        logger.error(f"Error in create_problem: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/admin/problems/<problem_id>', methods=['DELETE'])
@@ -378,85 +413,75 @@ def delete_problem(current_user, problem_id):
             return jsonify({'error': 'Problem not found'}), 404
         return jsonify({'message': 'Problem deleted successfully'})
     except Exception as e:
+        logger.error(f"Error in delete_problem: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 # ====================== OLYMPIAD ENDPOINTS ======================
 @app.route('/api/olympiads/<olympiad_id>', methods=['GET'])
 def get_olympiad(olympiad_id):
     try:
-        # Find olympiad by ID
         olympiad = olympiads_col.find_one({'_id': ObjectId(olympiad_id)})
-        
         if not olympiad:
             return jsonify({'error': 'Olympiad not found'}), 404
-            
-        # Convert ObjectId to string and format datetime fields
+
         olympiad['_id'] = str(olympiad['_id'])
         olympiad['created_by'] = str(olympiad['created_by'])
         olympiad['start_time'] = olympiad['start_time'].isoformat()
         olympiad['end_time'] = olympiad['end_time'].isoformat()
         olympiad['created_at'] = olympiad['created_at'].isoformat()
-        
         return jsonify(olympiad)
-        
+
     except Exception as e:
+        logger.error(f"Error in get_olympiad: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/olympiads/<olympiad_id>/problems', methods=['GET'])
 def get_olympiad_problems(olympiad_id):
     try:
-        # First verify the olympiad exists
         olympiad = olympiads_col.find_one({'_id': ObjectId(olympiad_id)})
         if not olympiad:
             return jsonify({'error': 'Olympiad not found'}), 404
 
-        # Get all problems that are part of this olympiad
         problems = list(problems_col.find(
             {'id': {'$in': olympiad['problems']}},
-            {'_id': 0}  # Exclude MongoDB _id field
+            {'_id': 0}
         ))
-
         return jsonify(problems)
 
     except Exception as e:
+        logger.error(f"Error in get_olympiad_problems: {str(e)}")
         return jsonify({'error': str(e)}), 500
-    
+
 @app.route('/api/olympiads/<olympiad_id>/check-registration', methods=['GET'])
 @token_required
 def check_registration(current_user, olympiad_id):
     try:
-        # Verify olympiad exists first
         olympiad = olympiads_col.find_one({'_id': ObjectId(olympiad_id)})
         if not olympiad:
             return jsonify({'error': 'Olympiad not found'}), 404
 
-        # Check registration status
         existing = olympiad_participants_col.find_one({
             'olympiad_id': ObjectId(olympiad_id),
             'user_id': ObjectId(current_user['_id'])
         })
-        
         return jsonify({
             'isRegistered': bool(existing),
             'olympiadStatus': olympiad.get('status', 'upcoming')
         })
     except Exception as e:
+        logger.error(f"Error in check_registration: {str(e)}")
         return jsonify({'error': str(e)}), 500
-    
+
 @app.route('/api/olympiads', methods=['GET'])
 def get_all_olympiads():
     try:
         olympiads = list(olympiads_col.find({}))
-        
-        # _id ni stringga aylantirish
         for olympiad in olympiads:
             olympiad['_id'] = str(olympiad['_id'])
-            
         return jsonify(olympiads)
     except Exception as e:
+        logger.error(f"Error in get_all_olympiads: {str(e)}")
         return jsonify({'error': str(e)}), 500
-
-
 
 @app.route('/api/admin/olympiads', methods=['POST'])
 @token_required
@@ -464,7 +489,6 @@ def get_all_olympiads():
 def create_olympiad(current_user):
     try:
         data = request.get_json()
-        
         required_fields = ['name', 'start_time', 'end_time', 'problems']
         if not all(field in data for field in required_fields):
             return jsonify({'error': 'Missing required fields'}), 400
@@ -486,6 +510,7 @@ def create_olympiad(current_user):
         }), 201
 
     except Exception as e:
+        logger.error(f"Error in create_olympiad: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/admin/olympiads/<olympiad_id>', methods=['PUT'])
@@ -494,7 +519,6 @@ def create_olympiad(current_user):
 def update_olympiad(current_user, olympiad_id):
     try:
         data = request.get_json()
-        
         updates = {}
         if 'name' in data:
             updates['name'] = data['name']
@@ -511,13 +535,12 @@ def update_olympiad(current_user, olympiad_id):
             {'_id': ObjectId(olympiad_id)},
             {'$set': updates}
         )
-
         if result.modified_count == 0:
             return jsonify({'error': 'Olympiad not found or no changes made'}), 404
-            
         return jsonify({'message': 'Olympiad updated successfully'})
 
     except Exception as e:
+        logger.error(f"Error in update_olympiad: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/admin/olympiads/<olympiad_id>', methods=['DELETE'])
@@ -530,6 +553,7 @@ def delete_olympiad(current_user, olympiad_id):
             return jsonify({'error': 'Olympiad not found'}), 404
         return jsonify({'message': 'Olympiad deleted successfully'})
     except Exception as e:
+        logger.error(f"Error in delete_olympiad: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 # ====================== OLYMPIAD PARTICIPATION ======================
@@ -537,12 +561,10 @@ def delete_olympiad(current_user, olympiad_id):
 @token_required
 def register_for_olympiad(current_user, olympiad_id):
     try:
-        # Check if olympiad exists
         olympiad = olympiads_col.find_one({'_id': ObjectId(olympiad_id)})
         if not olympiad:
             return jsonify({'error': 'Olympiad not found'}), 404
 
-        # Check if registration already exists
         existing = olympiad_participants_col.find_one({
             'olympiad_id': ObjectId(olympiad_id),
             'user_id': ObjectId(current_user['_id'])
@@ -550,7 +572,6 @@ def register_for_olympiad(current_user, olympiad_id):
         if existing:
             return jsonify({'error': 'Already registered for this olympiad'}), 400
 
-        # Register participant
         registration = {
             'olympiad_id': ObjectId(olympiad_id),
             'user_id': ObjectId(current_user['_id']),
@@ -558,11 +579,11 @@ def register_for_olympiad(current_user, olympiad_id):
             'problems_solved': [],
             'total_points': 0
         }
-
         olympiad_participants_col.insert_one(registration)
         return jsonify({'message': 'Registered for olympiad successfully'}), 201
 
     except Exception as e:
+        logger.error(f"Error in register_for_olympiad: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/olympiads/<olympiad_id>/submit', methods=['POST'])
@@ -570,12 +591,10 @@ def register_for_olympiad(current_user, olympiad_id):
 def submit_olympiad_solution(current_user, olympiad_id):
     try:
         data = request.get_json()
-        
         required_fields = ['problem_id', 'code', 'language']
         if not all(field in data for field in required_fields):
             return jsonify({'error': 'Missing required fields'}), 400
 
-        # Check user registration for olympiad
         participation = olympiad_participants_col.find_one({
             'olympiad_id': ObjectId(olympiad_id),
             'user_id': ObjectId(current_user['_id'])
@@ -583,7 +602,6 @@ def submit_olympiad_solution(current_user, olympiad_id):
         if not participation:
             return jsonify({'error': 'Not registered for this olympiad'}), 403
 
-        # Check olympiad exists and timing
         olympiad = olympiads_col.find_one({'_id': ObjectId(olympiad_id)})
         if not olympiad:
             return jsonify({'error': 'Olympiad not found'}), 404
@@ -591,144 +609,34 @@ def submit_olympiad_solution(current_user, olympiad_id):
         now = datetime.now(timezone.utc)
         start_time = olympiad['start_time'].replace(tzinfo=timezone.utc)
         end_time = olympiad['end_time'].replace(tzinfo=timezone.utc)
-
         if now < start_time:
             return jsonify({'error': 'Olympiad has not started yet'}), 400
         if now > end_time:
             return jsonify({'error': 'Olympiad has ended'}), 400
 
-        # Check problem belongs to olympiad
         if data['problem_id'] not in olympiad['problems']:
             return jsonify({'error': 'Problem not part of this olympiad'}), 400
 
-        # Check if problem already solved
         if any(p['problem_id'] == data['problem_id'] for p in participation.get('problems_solved', [])):
             return jsonify({'error': 'Problem already solved'}), 400
 
-        # Get problem details
         problem = problems_col.find_one({'id': data['problem_id']})
         if not problem:
             return jsonify({'error': 'Problem not found'}), 404
 
-        # Create submission record
-        submission = {
-            'problem_id': data['problem_id'],
-            'olympiad_id': ObjectId(olympiad_id),
-            'user_id': ObjectId(current_user['_id']),
-            'code': data['code'],
-            'language': data['language'].lower(),
-            'submitted_at': now,
-            'status': 'Pending',
-            'results': []
-        }
-
-        # Save submission
-        submission_id = submissions_col.insert_one(submission).inserted_id
-
-        test_results = []
-        is_correct = True
-        max_runtime = 0
-        execution_start = datetime.now(timezone.utc)
-
-        # Execute against each test case
-        for test_case in problem.get('test_cases', []):
-            try:
-                result = execute_code(
-                    code=data['code'],
-                    language=data['language'],
-                    input_data=test_case['input'],
-                    time_limit=problem.get('time_limit', 2)
-                )
-
-                test_result = {
-                    'input': test_case['input'],
-                    'expected': test_case['output'],
-                    'actual': result.get('output', ''),
-                    'runtime': result.get('runtime', 0),
-                    'status': result['status']
-                }
-
-                if 'error' in result:
-                    test_result['error'] = result['error']
-
-                if result['status'] != 'Accepted' or result.get('output', '') != test_case['output']:
-                    is_correct = False
-
-                max_runtime = max(max_runtime, result.get('runtime', 0))
-                test_results.append(test_result)
-
-            except Exception as e:
-                test_results.append({
-                    'input': test_case['input'],
-                    'expected': test_case['output'],
-                    'status': 'Evaluation Error',
-                    'error': str(e),
-                    'runtime': 0
-                })
-                is_correct = False
-
-        # Update submission status
-        final_status = 'Accepted' if is_correct else 'Rejected'
-        submissions_col.update_one(
-            {'_id': submission_id},
-            {'$set': {
-                'status': final_status,
-                'results': test_results,
-                'runtime': max_runtime
-            }}
+        result = process_submission(
+            code=data['code'],
+            language=data['language'],
+            problem=problem,
+            user_id=str(current_user['_id']),
+            is_olympiad=True,
+            olympiad_id=olympiad_id,
+            participation=participation
         )
-
-        # Calculate points if correct
-        total_points = 0
-        time_taken = (datetime.now(timezone.utc) - execution_start).total_seconds()
-
-        if is_correct:
-            # Base points based on difficulty
-            base_points = {
-                'easy': 100,
-                'medium': 200,
-                'hard': 300
-            }.get(problem['difficulty'].lower(), 100)
-
-            # Deduct 1 point per second until 10 points remain
-            points_after_penalty = max(10, base_points - int(time_taken))
-            total_points = points_after_penalty
-
-            # Update participation
-            update_data = {
-                '$push': {
-                    'problems_solved': {
-                        'problem_id': data['problem_id'],
-                        'solved_at': now,
-                        'time_taken': time_taken,
-                        'points_earned': total_points
-                    }
-                },
-                '$inc': {'total_points': total_points}
-            }
-
-            olympiad_participants_col.update_one(
-                {'_id': participation['_id']},
-                update_data
-            )
-
-            # Update problem stats
-            problems_col.update_one(
-                {'id': data['problem_id']},
-                {'$inc': {'solved_count': 1}}
-            )
-
-        return jsonify({
-            'submission_id': str(submission_id),
-            'status': final_status,
-            'results': test_results,
-            'points_earned': total_points if is_correct else 0,
-            'time_taken': time_taken,
-            'runtime': max_runtime,
-            'is_correct': is_correct
-        })
+        return jsonify(result)
 
     except Exception as e:
+        logger.error(f"Error in submit_olympiad_solution: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 # ====================== LEADERBOARD ======================
@@ -740,7 +648,6 @@ def get_olympiad_leaderboard(olympiad_id):
             {'_id': 0, 'user_id': 1, 'total_points': 1, 'problems_solved': 1}
         ).sort('total_points', -1))
 
-        # Add usernames
         for p in participants:
             user = users_col.find_one(
                 {'_id': ObjectId(p['user_id'])},
@@ -751,6 +658,7 @@ def get_olympiad_leaderboard(olympiad_id):
 
         return jsonify(participants)
     except Exception as e:
+        logger.error(f"Error in get_olympiad_leaderboard: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 # ====================== ADMIN USER MANAGEMENT ======================
@@ -764,6 +672,7 @@ def get_all_users(current_user):
             user['_id'] = str(user['_id'])
         return jsonify(users)
     except Exception as e:
+        logger.error(f"Error in get_all_users: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/admin/users/<user_id>', methods=['DELETE'])
@@ -776,81 +685,62 @@ def delete_user(current_user, user_id):
             return jsonify({'error': 'User not found'}), 404
         return jsonify({'message': 'User deleted successfully'})
     except Exception as e:
+        logger.error(f"Error in delete_user: {str(e)}")
         return jsonify({'error': str(e)}), 500
-
 
 # ====================== USER AUTHENTICATION ======================
 @app.route('/api/register', methods=['POST'])
 def register():
     try:
         data = request.get_json()
-        
-        # Validation
         if not data or 'username' not in data or 'password' not in data:
             return jsonify({'error': 'Username and password are required'}), 400
-            
-        # Check if username already exists
+
         if users_col.find_one({'username': data['username']}):
             return jsonify({'error': 'Username already exists'}), 400
-            
-        # Hash password
+
         hashed_password = bcrypt.generate_password_hash(data['password']).decode('utf-8')
-        
-        # Create new user
         user = {
             'username': data['username'],
             'password': hashed_password,
             'email': data.get('email', ''),
-            'role': 'user',  # Default role
+            'role': 'user',
             'created_at': datetime.utcnow(),
             'updated_at': datetime.utcnow(),
             'solved_problems': [],
             'total_points': 0
         }
-        
-        # Insert user into database
         user_id = users_col.insert_one(user).inserted_id
-        
-        # Generate JWT token
         token = jwt.encode({
             'user_id': str(user_id),
             'exp': datetime.utcnow() + timedelta(days=30)
         }, app.config['SECRET_KEY'], algorithm='HS256')
-        
         return jsonify({
             'message': 'User registered successfully',
             'token': token,
             'user_id': str(user_id),
             'username': user['username']
         }), 201
-        
+
     except Exception as e:
+        logger.error(f"Error in register: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/login', methods=['POST'])
 def login():
     try:
         data = request.get_json()
-        
-        # Validation
         if not data or 'username' not in data or 'password' not in data:
             return jsonify({'error': 'Username and password are required'}), 400
-            
-        # Find user
+
         user = users_col.find_one({'username': data['username']})
-        if not user:
+        if not user or not bcrypt.check_password_hash(user['password'], data['password']):
             return jsonify({'error': 'Invalid credentials'}), 401
-            
-        # Check password
-        if not bcrypt.check_password_hash(user['password'], data['password']):
-            return jsonify({'error': 'Invalid credentials'}), 401
-            
-        # Generate JWT token
+
         token = jwt.encode({
             'user_id': str(user['_id']),
             'exp': datetime.utcnow() + timedelta(days=30)
         }, app.config['SECRET_KEY'], algorithm='HS256')
-        
         return jsonify({
             'message': 'Login successful',
             'token': token,
@@ -860,13 +750,13 @@ def login():
         })
 
     except Exception as e:
+        logger.error(f"Error in login: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/me', methods=['GET'])
 @token_required
 def get_current_user(current_user):
     try:
-        # Remove sensitive information before sending
         user_data = {
             'user_id': str(current_user['_id']),
             'username': current_user['username'],
@@ -878,8 +768,8 @@ def get_current_user(current_user):
         }
         return jsonify(user_data)
     except Exception as e:
+        logger.error(f"Error in get_current_user: {str(e)}")
         return jsonify({'error': str(e)}), 500
-
 
 # ====================== ERROR HANDLERS ======================
 @app.errorhandler(404)
@@ -892,6 +782,7 @@ def bad_request(error):
 
 @app.errorhandler(500)
 def server_error(error):
+    logger.error(f"Server error: {str(error)}")
     return jsonify({'error': 'Internal server error'}), 500
 
 if __name__ == '__main__':
