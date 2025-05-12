@@ -14,6 +14,10 @@ from functools import wraps
 import shutil
 import logging
 import re
+import sys
+
+from pymongo.errors import ConnectionFailure
+import time
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -36,7 +40,8 @@ CORS(app, resources={
 })
 
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', os.urandom(32).hex())
-app.config["MONGO_URI"] = os.getenv("MONGO_URI", "mongodb+srv://ziyodullasodiqov01:HZL53G_Cgni3NT3@cluster0.vfh7g.mongodb.net/onlinejudge?retryWrites=true&w=majority")
+app.config["MONGO_URI"] = os.getenv("MONGO_URI", "mongodb+srv://ziyodullasodiqov01:HZL53G_Cgni3NT3@cluster0.vfh7g.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
+
 mongo = PyMongo(app)
 bcrypt = Bcrypt(app)
 
@@ -71,20 +76,25 @@ LANGUAGE_CONFIG = {
         'sanitize': lambda code: code
     }
 }
+max_retries = 3
+retry_delay = 5  # seconds
 
-# Initialize collections
-try:
-    mongo.cx.server_info()  # Test connection
-    problems_col = mongo.db.problems
-    submissions_col = mongo.db.submissions
-    users_col = mongo.db.users
-    olympiads_col = mongo.db.olympiads
-    olympiad_participants_col = mongo.db.olympiad_participants
-    logger.info("✅ MongoDB connected and collections initialized successfully")
-except Exception as e:
-    logger.error(f"❌ FATAL: MongoDB connection failed: {str(e)}")
-    import sys
-    sys.exit(1)
+for attempt in range(max_retries):
+    try:
+        mongo.cx.server_info()  # Test connection
+        problems_col = mongo.db.problems
+        submissions_col = mongo.db.submissions
+        users_col = mongo.db.users
+        olympiads_col = mongo.db.olympiads
+        olympiad_participants_col = mongo.db.olympiad_participants
+        logger.info("✅ MongoDB connected and collections initialized successfully")
+        break
+    except ConnectionFailure as e:
+        logger.warning(f"⚠️ MongoDB connection attempt {attempt + 1} failed: {str(e)}")
+        if attempt == max_retries - 1:
+            logger.error(f"❌ FATAL: Could not connect to MongoDB after {max_retries} attempts")
+            sys.exit(1)
+        time.sleep(retry_delay)
 
 # ====================== AUTH MIDDLEWARE ======================
 def token_required(f):
